@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -49,6 +50,7 @@ export class PlacesService {
   }
 
   async create(dto: CreatePlaceDto, userId: string) {
+    await this.ensureCategoryExists(dto.categoryId);
     const { openingHours, links, ...rest } = dto;
     const signalCode = await generateUniqueSignalCode(this.prisma);
     return this.prisma.place.create({
@@ -65,6 +67,9 @@ export class PlacesService {
 
   async update(id: string, dto: UpdatePlaceDto, user: SafeUser) {
     const place = await this.ensureExists(id);
+    if (dto.categoryId) {
+      await this.ensureCategoryExists(dto.categoryId);
+    }
     if (user.role === UserRole.GESTOR && place.createdById !== user.id) {
       throw new ForbiddenException('Você só pode editar seus próprios locais');
     }
@@ -144,6 +149,16 @@ export class PlacesService {
         ratingCount: rating?.ratingCount ?? 0,
       };
     });
+  }
+
+  private async ensureCategoryExists(categoryId: string) {
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { id: true },
+    });
+    if (!category) {
+      throw new BadRequestException('Categoria não encontrada');
+    }
   }
 
   private async ensureExists(id: string) {
