@@ -1,7 +1,6 @@
-# /etc/nginx/sites-available/api.rotapotiguar.com
-# ln -s .../api.rotapotiguar.com /etc/nginx/sites-enabled/
-#
-# API escuta em 127.0.0.1:6000 (docker-compose.prod.yml)
+# Configuração final (referência) após certbot --nginx
+# O certbot altera /etc/nginx/sites-available/api.rotapotiguar.com automaticamente.
+# Não edite os blocos ssl_certificate manualmente — use certbot renew.
 
 server {
     listen 80;
@@ -14,13 +13,15 @@ server {
 }
 
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name api.rotapotiguar.com;
 
-    # certbot --nginx -d api.rotapotiguar.com
-    ssl_certificate     /etc/letsencrypt/live/api.rotapotiguar.com/fullchain.pem;
+    ssl_certificate /etc/letsencrypt/live/api.rotapotiguar.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/api.rotapotiguar.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     client_max_body_size 10M;
 
@@ -31,5 +32,9 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
     }
 }
