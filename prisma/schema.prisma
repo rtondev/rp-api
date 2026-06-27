@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  TURISTA
+  GESTOR
+  ADMIN
+}
+
+enum SignalType {
+  SINALIZACAO
+  ELOGIO
+}
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String?  @unique
+  email     String?  @unique
+  password  String?
+  name      String
+  role      UserRole @default(TURISTA)
+  registrationLatitude  Float?
+  registrationLongitude Float?
+  registrationMeta      Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  places               Place[]
+  placeSignals         PlaceSignal[]
+  favorites            Favorite[]
+  placeSignalResponses PlaceSignal[] @relation("PlaceSignalResponses")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  icon        String   @default("Tag")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  places Place[]
+}
+
+model Place {
+  id          String   @id @default(uuid())
+  signalCode  String?  @unique
+  title       String
+  description String
+  latitude    Float
+  longitude   Float
+  address     String?
+  imageUrl    String?
+  available   Boolean  @default(true)
+  links       Json     @default("[]")
+  openingHours Json    @default("{}")
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  signals   PlaceSignal[]
+  favorites Favorite[]
+}
+
+model PlaceSignal {
+  id            String     @id @default(uuid())
+  placeId       String
+  place         Place      @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  type          SignalType
+  priority      Int        @default(0)
+  rating        Int?
+  message       String
+  response      String?
+  respondedAt   DateTime?
+  respondedById String?
+  respondedBy   User?      @relation("PlaceSignalResponses", fields: [respondedById], references: [id])
+  submitLatitude  Float?
+  submitLongitude Float?
+  submitMeta        Json?
+  createdAt     DateTime   @default(now())
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  placeId   String
+  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, placeId])
+}

@@ -1,0 +1,45 @@
+# Produção na VPS — portas reservadas para a Rota Potiguar
+#
+# VPS (não usar para este projeto):
+#   1000, 2000, 3307, 5000, 5050, 8080, 25565
+#
+# Rota Potiguar:
+#   6000 — API (nginx: api.rotapotiguar.com → 127.0.0.1:6000)
+#   Postgres — só rede interna do Docker (sem porta no host)
+#
+# Uso:
+#   cp .env.example .env   # ajuste secrets e PORT=6000
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rota
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: rota_potiguar
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rota -d rota_potiguar"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-6000}:${API_PORT:-6000}"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://rota:${POSTGRES_PASSWORD}@db:5432/rota_potiguar
+      PORT: ${API_PORT:-6000}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

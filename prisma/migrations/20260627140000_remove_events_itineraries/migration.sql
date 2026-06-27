@@ -1,0 +1,5 @@
+-- DropTable
+DROP TABLE IF EXISTS "ItineraryStop";
+DROP TABLE IF EXISTS "Itinerary";
+DROP TABLE IF EXISTS "EventSignal";
+DROP TABLE IF EXISTS "Event";

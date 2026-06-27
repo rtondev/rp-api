@@ -20,7 +20,7 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('RP API — backend em execução.');
+      .expect({ status: 'ok', name: 'Rota Potiguar API' });
   });
 
   afterEach(async () => {
