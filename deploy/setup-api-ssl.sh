@@ -2,17 +2,13 @@
 set -euo pipefail
 
 # Configura nginx + SSL (Let's Encrypt) para api.rotapotiguar.com
-# Uso na VPS (como root):
-#   cd /caminho/rp-api
-#   sudo bash deploy/setup-api-ssl.sh seu@email.com
+# Lê a porta do .env automaticamente.
 #
-# Pré-requisitos:
-#   - DNS: registro A de api.rotapotiguar.com → IP da VPS
-#   - API rodando: docker compose -f docker-compose.prod.yml up -d
-#   - Porta 6000 em 127.0.0.1: ss -tlnp | grep 6000
+# Uso na VPS:
+#   cd ~/rp-api
+#   sudo bash deploy/setup-api-ssl.sh seu@email.com
 
 DOMAIN="api.rotapotiguar.com"
-API_PORT="6000"
 EMAIL="${1:-}"
 
 if [[ -z "$EMAIL" ]]; then
@@ -26,13 +22,26 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 NGINX_AVAILABLE="/etc/nginx/sites-available/${DOMAIN}"
 NGINX_ENABLED="/etc/nginx/sites-enabled/${DOMAIN}"
+
+cd "$PROJECT_DIR"
+
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
+API_PORT="${API_HOST_PORT:-${API_PORT:-${PORT:-6000}}}"
+
+echo "==> Porta da API (.env): ${API_PORT}"
 
 echo "==> Verificando API em 127.0.0.1:${API_PORT}..."
 if ! curl -sf "http://127.0.0.1:${API_PORT}/" >/dev/null 2>&1; then
   echo "AVISO: API não respondeu em 127.0.0.1:${API_PORT}."
-  echo "       Suba o container antes: docker compose -f docker-compose.prod.yml up -d"
+  echo "       Confira .env: PORT, API_PORT e API_HOST_PORT devem ser iguais (ex.: 6000)"
+  echo "       docker compose -f docker-compose.prod.yml up -d --build"
   read -r -p "Continuar mesmo assim? [s/N] " ans
   [[ "${ans,,}" == "s" ]] || exit 1
 fi
@@ -48,7 +57,8 @@ else
   exit 1
 fi
 
-echo "==> Copiando config nginx..."
+echo "==> Gerando nginx com porta ${API_PORT}..."
+bash "${SCRIPT_DIR}/render-nginx-config.sh"
 cp "${SCRIPT_DIR}/nginx-api.conf" "${NGINX_AVAILABLE}"
 ln -sf "${NGINX_AVAILABLE}" "${NGINX_ENABLED}"
 
@@ -66,6 +76,10 @@ certbot --nginx \
   --redirect \
   --non-interactive
 
+echo "==> Garantindo proxy_pass na porta ${API_PORT} após certbot..."
+sed -i -E "s|proxy_pass http://127.0.0.1:[0-9]+/?;|proxy_pass http://127.0.0.1:${API_PORT};|g" "${NGINX_AVAILABLE}"
+nginx -t && systemctl reload nginx
+
 echo "==> Testando HTTPS..."
 curl -sfI "https://${DOMAIN}/" | head -n 5 || true
 
@@ -73,6 +87,3 @@ echo ""
 echo "Pronto."
 echo "  API:  https://${DOMAIN}"
 echo "  Proxy → 127.0.0.1:${API_PORT}"
-echo ""
-echo "Renovação automática: certbot renew (timer systemd já costuma estar ativo)."
-echo "Testar renovação: certbot renew --dry-run"
