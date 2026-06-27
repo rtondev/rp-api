@@ -34,6 +34,7 @@ export class SignalsService {
     placeId: string,
     userId: string,
     dto: CreatePlaceSignalDto,
+    clientIp?: string,
   ) {
     const place = await this.prisma.place.findUnique({
       where: { id: placeId },
@@ -62,6 +63,7 @@ export class SignalsService {
         submitMeta: {
           accuracy: dto.submitContext.accuracy,
           deviceMeta: dto.submitContext.deviceMeta,
+          ...(clientIp ? { ip: clientIp } : {}),
         } as Prisma.InputJsonValue,
       },
       include: {

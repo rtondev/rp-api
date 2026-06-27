@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { LoginDto, PhoneCheckDto, PhoneSessionDto, RegisterDto } from './dto/auth.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { getClientIp } from '../common/utils/client-ip.util';
 import type { SafeUser } from '../common/types/user.type';
 
 @Controller('auth')
@@ -15,8 +17,8 @@ export class AuthController {
   }
 
   @Post('phone/session')
-  phoneSession(@Body() dto: PhoneSessionDto) {
-    return this.authService.phoneSession(dto);
+  phoneSession(@Body() dto: PhoneSessionDto, @Req() req: Request) {
+    return this.authService.phoneSession(dto, getClientIp(req));
   }
 
   @Post('register')

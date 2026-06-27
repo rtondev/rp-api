@@ -26,6 +26,7 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
   app.useGlobalFilters(new AllExceptionsFilter());
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

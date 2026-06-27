@@ -6,8 +6,10 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { UserRole } from '@prisma/client';
 import { SignalsService } from './signals.service';
@@ -16,6 +18,7 @@ import { ListGestorSignalsQueryDto } from './dto/list-signals-query.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { getClientIp } from '../common/utils/client-ip.util';
 import type { SafeUser } from '../common/types/user.type';
 
 @Controller()
@@ -34,8 +37,14 @@ export class SignalsController {
     @Param('placeId') placeId: string,
     @CurrentUser() user: SafeUser,
     @Body() dto: CreatePlaceSignalDto,
+    @Req() req: Request,
   ) {
-    return this.signalsService.createPlaceSignal(placeId, user.id, dto);
+    return this.signalsService.createPlaceSignal(
+      placeId,
+      user.id,
+      dto,
+      getClientIp(req),
+    );
   }
 
   @Get('places/:placeId/signals')

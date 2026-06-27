@@ -42,7 +42,7 @@ export class AuthService {
     };
   }
 
-  async phoneSession(dto: PhoneSessionDto) {
+  async phoneSession(dto: PhoneSessionDto, clientIp?: string) {
     const phone = normalizePhone(dto.phone);
     const existing = await this.prisma.user.findUnique({ where: { phone } });
 
@@ -61,13 +61,13 @@ export class AuthService {
       });
     }
 
-    if (!dto.registrationContext) {
-      throw new BadRequestException(
-        'Permita o acesso à localização para concluir o cadastro',
-      );
-    }
-
     if (dto.proximityTarget) {
+      if (!dto.registrationContext) {
+        throw new BadRequestException(
+          'Permita o acesso à localização para concluir o cadastro neste local',
+        );
+      }
+
       await this.assertProximityTarget(
         dto.proximityTarget.placeId,
         dto.registrationContext.latitude,
@@ -75,15 +75,22 @@ export class AuthService {
       );
     }
 
+    const registrationMeta =
+      dto.registrationContext || clientIp
+        ? ({
+            ...(dto.registrationContext ?? {}),
+            ...(clientIp ? { ip: clientIp } : {}),
+          } as Prisma.InputJsonValue)
+        : undefined;
+
     const user = await this.prisma.user.create({
       data: {
         phone,
         name: dto.name.trim(),
         role: UserRole.TURISTA,
-        registrationLatitude: dto.registrationContext.latitude,
-        registrationLongitude: dto.registrationContext.longitude,
-        registrationMeta:
-          dto.registrationContext as unknown as Prisma.InputJsonValue,
+        registrationLatitude: dto.registrationContext?.latitude,
+        registrationLongitude: dto.registrationContext?.longitude,
+        registrationMeta,
       },
     });
 
