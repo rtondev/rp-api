@@ -1,5 +1,5 @@
-import { PrismaClient, UserRole } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
 
@@ -9,14 +9,14 @@ const users = [
   {
     email: 'admin@gmail.com',
     name: 'Administrador',
-    role: UserRole.ADMIN,
+    role: 'ADMIN',
   },
   {
     email: 'praiamar@gmail.com',
     name: 'Praia Mar',
-    role: UserRole.GESTOR,
+    role: 'GESTOR',
   },
-] as const;
+];
 
 async function main() {
   const password = await bcrypt.hash(PASSWORD, 10);
