@@ -2,34 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-
-function parseCorsOrigins(): string[] {
-  const fallback = ['http://localhost:3000', 'http://127.0.0.1:3000'];
-  const raw = process.env.CORS_ORIGINS?.trim();
-  if (!raw) return fallback;
-
-  const origins = raw
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  return origins.length > 0 ? origins : fallback;
-}
-
-function isCorsOriginAllowed(
-  origin: string | undefined,
-  allowedOrigins: string[],
-): boolean {
-  if (!origin) return true;
-
-  if (allowedOrigins.includes(origin)) return true;
-
-  return allowedOrigins.some((allowed) => {
-    if (!allowed.startsWith('*.')) return false;
-    const suffix = allowed.slice(1);
-    return origin.endsWith(suffix) || origin === allowed.slice(2);
-  });
-}
+import {
+  isCorsOriginAllowed,
+  parseCorsOrigins,
+} from './common/config/cors.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -38,13 +14,16 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin, callback) => {
       if (isCorsOriginAllowed(origin, corsOrigins)) {
-        callback(null, true);
+        callback(null, origin ?? true);
         return;
       }
 
       callback(null, false);
     },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    optionsSuccessStatus: 204,
   });
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalPipes(

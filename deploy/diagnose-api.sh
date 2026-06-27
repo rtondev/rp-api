@@ -29,7 +29,18 @@ echo "=== Porta ${API_PORT} no host ==="
 ss -tlnp | grep ":${API_PORT} " || echo "Nada escutando em ${API_PORT}"
 
 echo ""
-echo "=== curl local ==="
+echo "=== CORS (.env) ==="
+grep '^CORS_ORIGINS=' .env 2>/dev/null || echo "CORS_ORIGINS não definido (API usa padrão de produção se NODE_ENV=production)"
+
+echo ""
+echo "=== Preflight CORS (simula www.rotapotiguar.com) ==="
+curl -sv -X OPTIONS "http://127.0.0.1:${API_PORT}/auth/login" \
+  -H "Origin: https://www.rotapotiguar.com" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type,authorization" \
+  2>&1 | grep -iE 'HTTP/|access-control' || true
+
+echo ""
 curl -sv "http://127.0.0.1:${API_PORT}/" 2>&1 | tail -n 15
 
 echo ""
